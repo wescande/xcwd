@@ -295,8 +295,18 @@ static int readPath(struct proc_s *proc)
 #endif
     return 1;
 }
+static int nameMatch(char *cur_name, const char *argv[])
+{
+	for (int i = 1; argv[i] != NULL; ++i) {
+		if (0 == strcmp(cur_name, argv[i])) {
+			LOG("MATCHING NAME [%s] vs [%s]\n", cur_name, argv[i]);
+			return 1;
+		}
+	}
+	return 0;
+}
 
-static int cwdOfDeepestChild(processes_t p, long pid)
+static int cwdOfDeepestChild(processes_t p, long pid, const char *argv[])
 {
     int i;
     struct proc_s key = { .pid = pid, .ppid = pid},
@@ -306,6 +316,9 @@ static int cwdOfDeepestChild(processes_t p, long pid)
         if(res) {
             lastRes = res;
             key.ppid = res->pid;
+			if (nameMatch(res->name, argv)) {
+				break ;
+			}
         }
         res = (struct proc_s *)bsearch(&key, p->ps, p->n,
                 sizeof(struct proc_s), ppidCmp);
@@ -334,7 +347,6 @@ int getHomeDirectory()
 int main(int argc, const char *argv[])
 {
     (void)argc;
-    (void)argv;
 
     processes_t p;
     long pid;
@@ -372,7 +384,7 @@ int main(int argc, const char *argv[])
         if (size)
             free(strings);
     }
-    if (pid == -1 || !cwdOfDeepestChild(p, pid))
+    if (pid == -1 || !cwdOfDeepestChild(p, pid, argv))
         ret = getHomeDirectory();
     freeProcesses(p);
     return ret;
